@@ -118,7 +118,8 @@ function App() {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const res = await fetch("https://hcom.xyz/api/status");
+      // Fetch from local Cloudflare Function (Independent of Proxy!)
+      const res = await fetch("/api/status");
       if (!res.ok) throw new Error("API Failed");
       const data = await res.json();
       setSystems(data);
