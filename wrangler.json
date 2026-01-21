@@ -3,5 +3,12 @@
   "compatibility_date": "2024-09-23",
   "assets": {
     "directory": "./dist"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hornistatus",
+      "database_id": "2ccb9e81-8759-428d-8f5c-8467550ad6ad"
+    }
+  ]
 }
