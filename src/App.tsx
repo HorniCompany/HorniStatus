@@ -23,51 +23,51 @@ interface System {
   description: string;
 }
 
-// Mock Data (Later replace with API fetch)
-const MOCK_SYSTEMS: System[] = [
+// Fallback data if API fails
+const FALLBACK_SYSTEMS: System[] = [
   {
     id: "main",
     name: "Main Survival",
     type: "game",
-    status: "up",
-    uptime: 99.9,
-    latency: 24,
+    status: "down",
+    uptime: 0,
+    latency: 0,
     description: "Основной игровой мир (1.21)",
   },
   {
     id: "hub",
     name: "Lobby Hub",
     type: "game",
-    status: "up",
-    uptime: 100.0,
-    latency: 18,
+    status: "down",
+    uptime: 0,
+    latency: 0,
     description: "Точка входа и авторизации",
   },
   {
     id: "proxy",
     name: "Velocity Proxy",
     type: "proxy",
-    status: "up",
-    uptime: 100.0,
-    latency: 12,
+    status: "down",
+    uptime: 0,
+    latency: 0,
     description: "DDoS защита и маршрутизация",
   },
   {
     id: "web",
     name: "Website & API",
     type: "web",
-    status: "up",
-    uptime: 99.5,
-    latency: 45,
+    status: "down",
+    uptime: 0,
+    latency: 0,
     description: "horni.cc и API бэкенда",
   },
   {
     id: "auth",
     name: "HorniDB (Auth)",
     type: "db",
-    status: "up",
-    uptime: 99.9,
-    latency: 5,
+    status: "down",
+    uptime: 0,
+    latency: 0,
     description: "База данных игроков",
   },
 ];
@@ -117,12 +117,19 @@ function App() {
 
   const fetchStatus = async () => {
     setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      setSystems(MOCK_SYSTEMS);
+    try {
+      const res = await fetch("https://hcom.xyz/api/status");
+      if (!res.ok) throw new Error("API Failed");
+      const data = await res.json();
+      setSystems(data);
+    } catch (e) {
+      console.error("Failed to fetch status:", e);
+      // Only set fallback if we have no data at all
+      if (systems.length === 0) setSystems(FALLBACK_SYSTEMS);
+    } finally {
       setLastUpdated(new Date());
       setLoading(false);
-    }, 800);
+    }
   };
 
   useEffect(() => {
