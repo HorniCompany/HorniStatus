@@ -6,7 +6,7 @@ export async function onRequestPost(context) {
     // Verify Secret
     // Note: Ideally move this to Cloudflare secret var, but for now hardcoded fallback is acceptable if Env missing
     const VALID_SECRET =
-      env.API_SECRET || "qL*_=,D,cz**xu3yi~7N\~e9q5cikS`',#=7nX5@";
+      env.API_SECRET || "qL*_=,D,cz**xu3yi~7N\\~e9q5cikS`',#=7nX5@";
 
     if (secret !== VALID_SECRET) {
       return new Response("Unauthorized", { status: 401 });
