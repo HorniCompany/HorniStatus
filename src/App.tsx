@@ -6,26 +6,49 @@ import './index.css';
 
 type SystemStatus = 'up' | 'down' | 'maintenance';
 
+interface UptimeBucket {
+  date: string;              // YYYY-MM-DD
+  uptime: number | null;     // 0..100, or null if no data that day
+  total: number;             // raw heartbeat count for the day (used in tooltip)
+}
+
 interface System {
   id: string;
   name: string;
   type: 'game' | 'web' | 'db' | 'proxy';
   status: SystemStatus;
-  uptime: number;            // 0..100 (% over last 24h)
+  uptime: number | null;     // 0..100 (% over last 24h), null if no data
   latency: number;           // ms
   description: string;
+  history?: UptimeBucket[];  // 90 daily buckets, oldest first
 }
 
 const REFRESH_MS = 60_000;
 
 // Demo data shown ONLY in `bun run dev` when /api/status is unreachable.
 // Production reads live data from D1 - this is never used there.
+// Build a 90-day demo history with a bit of variation so the bars look real.
+function makeDemoHistory(seed: number): UptimeBucket[] {
+  const out: UptimeBucket[] = [];
+  const now = Date.now();
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(now - i * 86_400_000);
+    const date = d.toISOString().slice(0, 10);
+    // Pseudo-random per (seed, day): cluster of dips around days 60..70.
+    const noise = ((seed * 7919 + i * 31) % 17) / 100;
+    const dipZone = i >= 20 && i <= 30 ? 0.08 : 0;
+    const uptime = Math.max(0, Math.min(100, 100 - noise * 100 - dipZone * 100));
+    out.push({ date, uptime, total: 5760 });
+  }
+  return out;
+}
+
 const DEMO_SYSTEMS: System[] = [
-  { id: 'main',  name: 'Main Survival',  type: 'game',  status: 'up',          uptime: 99.92, latency: 12, description: 'Основной игровой мир' },
-  { id: 'hub',   name: 'Lobby Hub',      type: 'game',  status: 'up',          uptime: 99.85, latency: 18, description: 'Точка входа и авторизации' },
-  { id: 'proxy', name: 'Velocity Proxy', type: 'proxy', status: 'up',          uptime: 99.99, latency: 4,  description: 'DDoS защита и маршрутизация' },
-  { id: 'web',   name: 'Website & API',  type: 'web',   status: 'up',          uptime: 99.7,  latency: 28, description: 'horni.cc и API бэкенда' },
-  { id: 'db',    name: 'HorniDB (Auth)', type: 'db',    status: 'maintenance', uptime: 98.3,  latency: 8,  description: 'База данных игроков' },
+  { id: 'main',  name: 'Main Survival',  type: 'game',  status: 'up',          uptime: 99.92, latency: 12, description: 'Основной игровой мир',           history: makeDemoHistory(1) },
+  { id: 'hub',   name: 'Lobby Hub',      type: 'game',  status: 'up',          uptime: 99.85, latency: 18, description: 'Точка входа и авторизации',     history: makeDemoHistory(2) },
+  { id: 'proxy', name: 'Velocity Proxy', type: 'proxy', status: 'up',          uptime: 99.99, latency: 4,  description: 'DDoS защита и маршрутизация',   history: makeDemoHistory(3) },
+  { id: 'web',   name: 'Website & API',  type: 'web',   status: 'up',          uptime: 99.7,  latency: 28, description: 'horni.cc и API бэкенда',        history: makeDemoHistory(4) },
+  { id: 'db',    name: 'HorniDB (Auth)', type: 'db',    status: 'maintenance', uptime: 98.3,  latency: 8,  description: 'База данных игроков',           history: makeDemoHistory(5) },
 ];
 
 const App = () => {
@@ -151,21 +174,60 @@ function SystemRow({ system }: { system: System }) {
   const cls = `system is-${system.status === 'up' ? 'up' : system.status === 'maintenance' ? 'maintenance' : 'down'}`;
   return (
     <article className={cls}>
-      <div className="system-dot" aria-hidden="true" />
-      <div className="system-info">
-        <div className="system-name">{system.name}</div>
-        <div className="system-desc">{system.description}</div>
-      </div>
-      <div className="system-meta">
-        <span className="system-status">{statusLabel(system.status)}</span>
-        <span className="system-uptime">
-          {system.status === 'up' ? `${system.latency} ms` : '—'}
-          {' · '}
-          uptime {formatUptime(system.uptime)}
-        </span>
-      </div>
+      <header className="system-head">
+        <div className="system-dot" aria-hidden="true" />
+        <div className="system-info">
+          <div className="system-name">{system.name}</div>
+          <div className="system-desc">{system.description}</div>
+        </div>
+        <div className="system-meta">
+          <span className="system-status">{statusLabel(system.status)}</span>
+          <span className="system-uptime">
+            {system.status === 'up' ? `${system.latency} ms` : '—'}
+            {' · '}
+            uptime {formatUptime(system.uptime)}
+          </span>
+        </div>
+      </header>
+      {system.history && system.history.length > 0 && (
+        <UptimeBars history={system.history} />
+      )}
     </article>
   );
+}
+
+function UptimeBars({ history }: { history: UptimeBucket[] }) {
+  // Show oldest -> newest left to right.
+  // Hover/touch reveals a tooltip with the date and uptime value.
+  return (
+    <div className="uptime-bars" role="img" aria-label="История uptime за 90 дней">
+      <div className="uptime-bars-track">
+        {history.map((bucket) => (
+          <span
+            key={bucket.date}
+            className={`uptime-bar uptime-bar-${bucketTone(bucket)}`}
+            data-date={bucket.date}
+            data-uptime={bucket.uptime == null ? 'нет данных' : `${bucket.uptime.toFixed(2)}%`}
+            tabIndex={0}
+            aria-label={`${bucket.date}: ${bucket.uptime == null ? 'нет данных' : bucket.uptime.toFixed(2) + '%'}`}
+          />
+        ))}
+      </div>
+      <div className="uptime-bars-axis">
+        <span>90 дней назад</span>
+        <span className="uptime-bars-spacer" />
+        <span>сегодня</span>
+      </div>
+    </div>
+  );
+}
+
+function bucketTone(b: UptimeBucket): 'none' | 'good' | 'okay' | 'warn' | 'bad' {
+  if (b.uptime == null) return 'none';
+  if (b.uptime >= 99.9) return 'good';
+  if (b.uptime >= 95)   return 'okay';
+  if (b.uptime >= 80)   return 'warn';
+  return 'bad';
 }
 
 function statusLabel(s: SystemStatus): string {
@@ -180,8 +242,8 @@ function formatTime(d: Date): string {
   return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatUptime(pct: number): string {
-  if (!Number.isFinite(pct)) return '—';
+function formatUptime(pct: number | null): string {
+  if (pct == null || !Number.isFinite(pct)) return '—';
   // Three-significant-digits-ish: 99.9% / 100% / 87% / 0%
   if (pct >= 99.95) return '100%';
   if (pct >= 10)    return `${pct.toFixed(1)}%`;

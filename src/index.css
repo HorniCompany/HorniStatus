@@ -203,11 +203,10 @@ button {
 }
 
 .system {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.85rem;
-  align-items: center;
-  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 0.95rem;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-left: 2px solid var(--border-soft);
@@ -219,6 +218,13 @@ button {
 .system.is-warn    { border-left-color: var(--warn); }
 .system.is-down    { border-left-color: var(--danger); }
 .system.is-maintenance { border-left-color: var(--info); }
+
+.system-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.85rem;
+  align-items: center;
+}
 
 .system-dot {
   width: 8px;
@@ -285,10 +291,102 @@ button {
 }
 
 @media (max-width: 480px) {
-  .system { grid-template-columns: auto 1fr; gap: 0.7rem; padding: 0.75rem 0.85rem; }
+  .system { padding: 0.75rem 0.85rem 0.85rem; }
+  .system-head { grid-template-columns: auto 1fr; gap: 0.7rem; }
   .system-meta { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; padding-top: 0.4rem; border-top: 1px dashed var(--border); }
   .system-name { font-size: 0.9rem; white-space: normal; }
   .system-desc { white-space: normal; }
+}
+
+/* ==================== Uptime bars (90-day history) ==================== */
+
+.uptime-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.15rem;
+}
+
+.uptime-bars-track {
+  display: grid;
+  grid-template-columns: repeat(90, 1fr);
+  gap: 2px;
+  height: 26px;
+  align-items: stretch;
+}
+
+.uptime-bar {
+  position: relative;
+  display: block;
+  background: var(--text-faint);
+  border-radius: 1px;
+  cursor: default;
+  transition: transform var(--t), filter var(--t);
+}
+.uptime-bar:hover, .uptime-bar:focus-visible {
+  transform: scaleY(1.15);
+  filter: brightness(1.25);
+  outline: none;
+}
+
+/* Tone palette - quiet rather than alarming. */
+.uptime-bar-good { background: var(--ok); }
+.uptime-bar-okay { background: #a5c08a; }    /* lighter green */
+.uptime-bar-warn { background: var(--warn); }
+.uptime-bar-bad  { background: var(--danger); }
+.uptime-bar-none { background: var(--text-faint); opacity: 0.45; }
+
+/* Tooltip via data-* attribute. Pointer-events:none keeps the hover stable. */
+.uptime-bar::after {
+  content: attr(data-date) ' · ' attr(data-uptime);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elev);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--t);
+  z-index: 5;
+}
+.uptime-bar:hover::after,
+.uptime-bar:focus-visible::after {
+  opacity: 1;
+}
+
+.uptime-bars-axis {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.uptime-bars-spacer { flex: 1; height: 1px; background: var(--border); margin: 0 0.5rem; }
+
+/* Tooltip alignment near the edges so it never clips off the card. */
+.uptime-bars-track .uptime-bar:first-child::after { left: 0; transform: translateX(0); }
+.uptime-bars-track .uptime-bar:last-child::after { left: auto; right: 0; transform: translateX(0); }
+
+@media (max-width: 480px) {
+  /* On phones we only have ~340px usable - 90 1px bars is too thin to hover.
+     Drop to 30 days; the data is the same, we just hide ~2/3 with CSS. */
+  .uptime-bars-track {
+    grid-template-columns: repeat(30, 1fr);
+    height: 22px;
+  }
+  .uptime-bar:nth-child(-n+60) { display: none; }
+  .uptime-bars-axis span:first-child::before { content: '30 'attr(data-x); }
+  .uptime-bars-axis span:first-child { font-size: 0; }
+  .uptime-bars-axis span:first-child::after { content: '30 дней назад'; font-size: 0.65rem; }
 }
 
 /* ==================== Footer ==================== */
