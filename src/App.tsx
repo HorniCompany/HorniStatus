@@ -17,7 +17,16 @@ interface System {
 }
 
 const REFRESH_MS = 60_000;
-const POSTPONE_INITIAL_MS = 1_500;  // wait this long before showing the loader, avoids flash on fast networks
+
+// Demo data shown ONLY in `bun run dev` when /api/status is unreachable.
+// Production reads live data from D1 - this is never used there.
+const DEMO_SYSTEMS: System[] = [
+  { id: 'main',  name: 'Main Survival',  type: 'game',  status: 'up',          uptime: 99.92, latency: 12, description: 'Основной игровой мир' },
+  { id: 'hub',   name: 'Lobby Hub',      type: 'game',  status: 'up',          uptime: 99.85, latency: 18, description: 'Точка входа и авторизации' },
+  { id: 'proxy', name: 'Velocity Proxy', type: 'proxy', status: 'up',          uptime: 99.99, latency: 4,  description: 'DDoS защита и маршрутизация' },
+  { id: 'web',   name: 'Website & API',  type: 'web',   status: 'up',          uptime: 99.7,  latency: 28, description: 'horni.cc и API бэкенда' },
+  { id: 'db',    name: 'HorniDB (Auth)', type: 'db',    status: 'maintenance', uptime: 98.3,  latency: 8,  description: 'База данных игроков' },
+];
 
 const App = () => {
   const [systems, setSystems] = useState<System[]>([]);
