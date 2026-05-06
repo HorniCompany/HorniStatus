@@ -3,11 +3,12 @@ export async function onRequestPost(context) {
     const { request, env } = context;
     const { monitor_id, latency, status, secret } = await request.json();
 
-    // Verify Secret
-    // Note: Ideally move this to Cloudflare secret var, but for now hardcoded fallback is acceptable if Env missing
-    const VALID_SECRET =
-      env.API_SECRET || "qL*_=,D,cz**xu3yi~7N\\~e9q5cikS`',#=7nX5@";
-
+    // Verify secret. The shared secret lives in the Cloudflare Pages env
+    // (API_SECRET) so it never sits in git. If unset we fail closed.
+    const VALID_SECRET = env.API_SECRET;
+    if (!VALID_SECRET) {
+      return new Response("Server misconfigured: API_SECRET not set", { status: 503 });
+    }
     if (secret !== VALID_SECRET) {
       return new Response("Unauthorized", { status: 401 });
     }
